@@ -21,7 +21,8 @@ from tqdm import tqdm  # For progress bars
 def yrec_runner(
     yrec_dir='/Users/vincentsmedile/YREC5.1/models',
     run_dirs='/Users/vincentsmedile/YREC5.1/models/Run_ZAMSmodels',
-    verbose=False
+    verbose=False, 
+    ncore_override = None
 ):
     """
     Run multiple YREC model5.1c namelists in parallel.
@@ -34,6 +35,10 @@ def yrec_runner(
         Single run directory (str) or list of directories containing one or more .nml1/.nml2 pairs.
     verbose : bool
         If True, print full output from the model run. If False, only show completion and errors.
+    ncore_override: None or int
+        If none/default, instructs the function to use all cpus except for 3 and run the YREC program for every namelist
+        in the directory in parallel until done. If given an int, it will use that many cores. 
+        !!!ONLY CHANGE IF YOU DO NOT WANT TO RUN PARALLEL AND YOU KNOW THE NUMBER OF CPUS YOU HAVE!!!
     """
 
     # If run_dirs is a single directory string, convert to a list for uniform processing
@@ -80,8 +85,16 @@ def yrec_runner(
         return (run['nml1'], cmd, result.stdout, result.stderr)
 
     # Determine how many parallel jobs to run, leaving some CPUs free
-    num_cpus = os.cpu_count()
-    max_workers = min(len(runs), max(1, num_cpus - 3))
+    if ncore_override is not None: 
+        num_cpus = os.cpu_count()
+        max_workers = min(len(runs), max(1, num_cpus - 3))
+    else: 
+        if ncore_override < 1: 
+            ncore_override = 1
+            print(f"❌Number of cores used cannot be 0, defaulting to 1")
+            max_workers = ncore_override
+        else: 
+            max_workers = ncore_override
     print(f"Running up to {max_workers} jobs in parallel (CPUs: {num_cpus})")
 
     # Use ThreadPoolExecutor to run all models in parallel with a progress bar
