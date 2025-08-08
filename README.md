@@ -1,7 +1,5 @@
 # YREC-Wrappers
-Wrappers, helpful codes, and additional machinery to interface with YREC with languages such as Python. 
-
-newheader_yrec provides a means of reading in .track, .last, and .store files as pandas dataframes or astropy tables. Provides a python interface for loading YREC data products.
+Wrappers, helpful codes, and additional machinery to interface with YREC with languages such as Python. Presented here as individual scripts to copy/paste and/or download. Compatible with command line and Jupyter/Spyder programs
 
 ## newheader_yrec:
 Provides the user with a modified wrthead.f file, to be used in the compiling/recompiling process. Allows for the generation of output files in a format that is better suited to reading into pandas, astropy.table, etc. and other modern astronomical data analysis tools for python. 
