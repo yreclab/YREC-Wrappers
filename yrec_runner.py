@@ -85,7 +85,7 @@ def yrec_runner(
         return (run['nml1'], cmd, result.stdout, result.stderr)
 
     # Determine how many parallel jobs to run, leaving some CPUs free
-    if ncore_override is not None: 
+    if ncore_override is None: 
         num_cpus = os.cpu_count()
         max_workers = min(len(runs), max(1, num_cpus - 3))
     else: 
