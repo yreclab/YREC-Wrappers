@@ -9,3 +9,5 @@ Provides the user with a modified wrthead.f file, to be used in the compiling/re
 ## change_nml: 
 YREC utilizes two namelists, one is a nml1 which controls settings, primes models, and provides paths to the correct places where the code is to output the results of a run as well as where the input files of equations of state, physics, opacities, etc are stored. change_nml allows the user to change all the filepaths in a directory of namelists to the approriate matching files in the directory where YREC is stored. The YREC directory tree for input files specifically must remain as downloaded for it to work. 
 
+## yrec_runner:
+Run multiple YREC namelists in parallel with optional verbose output and progress bar. Designed for batch execution of stellar evolution model runs. Allows for user to select a folder of nml1 and nml2 files after being edited by change_nml to ensure all paths are updated. Lets user run in parallel and always leavs 3 cores left open for other computer operations. User can also turn off parallel function by selecting the ncore_override = 1.
