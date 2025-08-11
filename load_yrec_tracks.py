@@ -12,7 +12,34 @@ Date: 2025-08-11
 
 Usage:
     from load_yrec_tracks import load_yrec_tracks
-    results = load_yrec_tracks('/path/to/yrec/tracks', recursive=True, iso_round=2)
+    #==== to run =====#
+    data = load_yrec_tracks(
+        '/Users/vincentsmedile/YREC5.1/Output/testsuite',
+        recursive=True,
+        load_subgiants=False,
+        load_all_tracks=True,
+        load_eeps=True,
+        load_isochrones=True
+    )
+#==== to load data after running ====#
+# Access whatever you requested:
+star_lists = data.get('star_lists', None)
+# sgb_tracks = data.get('subgiant_star_lists', None)
+isochrones = data.get('isochrone_lists', None)
+eep_tracks = data.get('eep_lists', None)
+
+#==== isolate specific things ====#
+for age, table in isochrones.items()
+    print(age, table)
+isochrones.values() <---- to see what tables isochrones are made
+isochrones.keys() <---- to see what age isochrones are made
+isochrones.get(list(isochrones.keys())[0]) <--- to get a specifc entry
+
+for trackname, table in star_lists.items()
+    print(age, table)
+star_lists.values() <---- to see what tables from your run are made
+star_lists.keys() <---- to see what masses/nml were run
+isochrones.get(list(star_lists.keys())[0]) <--- to get a specifc entry
 """
 
 import os
