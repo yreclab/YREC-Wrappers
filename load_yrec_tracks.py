@@ -4,6 +4,8 @@ load_yrec_tracks.py
 Function to load YREC stellar evolution tracks from one or more directories,
 with options to create subgiant bundles, EEP tracks grouped by Mass, and isochrones grouped by Age.
 
+**** FORTHCOMING: ADDITIONAL FUNCTIONS TO INDEX OTHER STATES OF EVOLUTION ****
+
 Author: Vincent A. Smedile
 Institution: The Ohio State University
 Date: 2025-08-11
