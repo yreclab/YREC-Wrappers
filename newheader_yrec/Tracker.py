@@ -1,19 +1,65 @@
-# Listed here is a short script for using the new wrthead.f header for .track files in YREC.
-# The new header is toggleable and can be commented out as needed
-# Makes it possible to use python Pandas DataFrames using pandas.read_csv() out of .track files
+#!/usr/bin/env python3
+"""
+tracker.py
 
-# After building YREC with the new wrthead.f file you can run something like the following to read in the .track files: 
+Reads a YREC `.track` file into a pandas DataFrame.
 
-# This part identifies the start of the table/headers and informs pandas how many lines to skip
- start = []
-    with open(file, 'r') as fp:
+This function scans for the last `#Version` line in the file 
+and skips all preceding lines before reading the actual data table.
+"""
+
+import pandas as pd
+
+
+def tracker(filepath):
+    """
+    Reads a YREC .track file into a pandas DataFrame.
+
+    Parameters
+    ----------
+    filepath : str
+        Full path to the .track file.
+
+    Returns
+    -------
+    pd.DataFrame
+        The track data read from the file.
+    """
+
+    # Step 1: Create a list to store the line numbers where '#Version' appears.
+    start = []
+
+    # Step 2: Open the file for reading.
+    with open(filepath, 'r') as fp:
+        # Step 3: Read all lines into memory.
         lines = fp.readlines()
-        fp.close()
-        for row in lines:
-            word = '#Version'
-            if row.find(word) != -1:
-                # Start is a the row you start on
-                start.append(lines.index(row))
-# Then you can easily read in the files
-track = pd.read_csv(file, header ='infer',
-                    skiprows = start[-1]+1, sep='\s+', float_precision= 'legacy')
+
+        # Step 4: Loop over each line with its index.
+        for idx, row in enumerate(lines):
+            # Step 5: If '#Version' is found in the line, store its index.
+            if '#Version' in row:
+                start.append(idx)
+
+    # Step 6: If no '#Version' line is found, raise an error.
+    if not start:
+        raise ValueError(f"No '#Version' line found in file: {filepath}")
+
+    # Step 7: The data table starts right after the last '#Version' line.
+    skiprows = start[-1] + 1
+
+    # Step 8: Use pandas to read the file into a DataFrame, skipping metadata lines.
+    track = pd.read_csv(
+        filepath,
+        header='infer',            # Automatically detect header from first data row
+        skiprows=skiprows,          # Skip lines before data starts
+        sep=r'\s+',                 # Split on any whitespace
+        float_precision='legacy'    # Maintain original float precision
+    )
+
+    # Step 9: Return the resulting DataFrame.
+    return track
+
+
+# Example usage (uncomment for testing):
+# df = tracker("/path/to/file.track")
+# print(df.head())
