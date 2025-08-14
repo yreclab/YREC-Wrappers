@@ -4,46 +4,57 @@ load_yrec_tracks.py
 Function to load YREC stellar evolution tracks from one or more directories,
 with options to create subgiant bundles, EEP tracks grouped by Mass, and isochrones grouped by Age.
 
-**** FORTHCOMING: ADDITIONAL FUNCTIONS TO INDEX OTHER STATES OF EVOLUTION ****
+If the tracker() function is not already loaded, this script will automatically fetch
+the latest version from the YREC-Wrappers GitHub repository and import it dynamically.
 
 Author: Vincent A. Smedile
 Institution: The Ohio State University
 Date: 2025-08-11
-
-Usage:
-    from load_yrec_tracks import load_yrec_tracks
-    #==== to run =====#
-    data = load_yrec_tracks(
-        '/Users/vincentsmedile/YREC5.1/Output/testsuite',
-        recursive=True,
-        load_subgiants=False,
-        load_all_tracks=True,
-        load_eeps=True,
-        load_isochrones=True
-    )
-#==== to load data after running ====#
-# Access whatever you requested:
-star_lists = data.get('star_lists', None)
-# sgb_tracks = data.get('subgiant_star_lists', None)
-isochrones = data.get('isochrone_lists', None)
-eep_tracks = data.get('eep_lists', None)
-
-#==== isolate specific things ====#
-for age, table in isochrones.items()
-    print(age, table)
-isochrones.values() <---- to see what tables isochrones are made
-isochrones.keys() <---- to see what age isochrones are made
-isochrones.get(list(isochrones.keys())[0]) <--- to get a specifc entry
-
-for trackname, table in star_lists.items()
-    print(age, table)
-star_lists.values() <---- to see what tables from your run are made
-star_lists.keys() <---- to see what masses/nml were run
-isochrones.get(list(star_lists.keys())[0]) <--- to get a specifc entry
 """
 
 import os
 from glob import glob
+import importlib.util
+import urllib.request
+import tempfile
+
+# ============================================================
+# AUTOLOAD tracker() FROM GITHUB IF NOT ALREADY AVAILABLE
+# ============================================================
+try:
+    tracker  # test if tracker() is defined in the current scope
+except NameError:
+    print("tracker() not found — fetching from GitHub...")
+    
+    # URL of the raw Tracker.py file in the YREC-Wrappers repo
+    RAW_TRACKER_URL = (
+        "https://raw.githubusercontent.com/yreclab/YREC-Wrappers/main/newheader_yrec/Tracker.py"
+    )
+
+    try:
+        # Step 1: Download Tracker.py into a temporary file
+        with tempfile.NamedTemporaryFile(suffix=".py", delete=False) as tmp_file:
+            urllib.request.urlretrieve(RAW_TRACKER_URL, tmp_file.name)
+            tmp_path = tmp_file.name
+
+        # Step 2: Dynamically import the downloaded Tracker.py
+        spec = importlib.util.spec_from_file_location("tracker_module", tmp_path)
+        tracker_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(tracker_module)
+
+        # Step 3: Assign tracker() to the global scope
+        tracker = tracker_module.tracker
+        print("✅ tracker() loaded successfully from GitHub.")
+
+    except Exception as e:
+        raise ImportError(
+            f"❌ Failed to load tracker() from GitHub. "
+            f"Check your internet connection or the repo URL.\nError: {e}"
+        )
+
+# ============================================================
+# load_yrec_tracks begins here!!
+# ============================================================
 
 def load_yrec_tracks(
     track_dirs,
@@ -51,7 +62,7 @@ def load_yrec_tracks(
     load_subgiants=True,
     load_all_tracks=True,
     load_eeps=True,
-    load_isochrones=True, 
+    load_isochrones=True,
     iso_round=2
 ):
     """
@@ -73,148 +84,102 @@ def load_yrec_tracks(
         If True, group and return isochrones by Age(Gyr).
     iso_round : int, default 2
         Number of decimal places to round Age(Gyr) values for isochrone grouping.
-        Must be a positive integer.
 
     Returns
     -------
     dict
-        Dictionary containing keys for requested outputs. Keys may include:
-        'star_lists', 'subgiant_star_lists', 'eep_lists', 'isochrone_lists'.
+        Dictionary containing keys for requested outputs.
     """
 
-    # 1. Normalize input so that track_dirs is always a list
+    # 1. Normalize input to list
     if isinstance(track_dirs, str):
         track_dirs = [track_dirs]
 
-    # 2. Initialize container for all loaded tracks, if requested
+    # 2. Prepare container for loaded tracks
     star_lists = {} if load_all_tracks else None
 
-    # 3. Load all .track files from each directory
+    # 3. Load .track files
     if load_all_tracks:
         for track_dir in track_dirs:
+            # Build search pattern
+            pattern = os.path.join(track_dir, '**', '*.track') if recursive else os.path.join(track_dir, '*.track')
+            track_files = glob(pattern, recursive=recursive)
 
-            # 3a. Build glob pattern depending on recursive flag
-            if recursive:
-                pattern = os.path.join(track_dir, '**', '*.track')
-                track_files = glob(pattern, recursive=True)
-            else:
-                pattern = os.path.join(track_dir, '*.track')
-                track_files = glob(pattern, recursive=False)
-
-            # 3b. Iterate over each found track file
             for filepath in track_files:
-
-                # Extract directory and filename info for grouping and messages
                 dir_path = os.path.dirname(filepath)
                 foldername = os.path.basename(dir_path)
                 filename = os.path.basename(filepath)
-
-                # Create group name by stripping extension and appending suffix
                 list_name = os.path.splitext(foldername)[0] + '_yrectracks'
 
-                # 3c. Load track data using external 'tracker' function
                 try:
-                    table = tracker(filepath)  # Replace with your actual track loading function
+                    table = tracker(filepath)  # call the dynamically loaded tracker()
                 except Exception as e:
                     print(f"Failed to read {filename} with tracker: {e}")
-                    continue  # Skip problematic files
+                    continue
 
-                # 3d. Append loaded track data to the appropriate group list
                 if list_name not in star_lists:
                     star_lists[list_name] = []
                 star_lists[list_name].append((table, filename))
 
-    # 4. Initialize output dictionary for requested processed results
     output = {}
 
-    # 5. Create subgiant-only track bundles (X_cen <= 1e-4) if requested
+    # 4. Subgiant-only lists
     if load_subgiants:
         if not load_all_tracks:
             raise ValueError("load_subgiants=True requires load_all_tracks=True")
 
         subgiant_star_lists = {}
-
-        # 5a. Iterate over each track group loaded
         for list_name, track_list in star_lists.items():
             subgiant_list = []
-
-            # 5b. For each track DataFrame, filter subgiant phase
             for df, fname in track_list:
                 sg_df = df[df['X_cen'] <= 1e-4].copy()
-                if sg_df.empty:
-                    print(f"⚠️ Warning: Subgiant selection empty for file '{fname}' in list '{list_name}'.")
-                else:
+                if not sg_df.empty:
                     subgiant_list.append(sg_df)
-
-            # 5c. Store subgiant data under a new key with '_sgb' suffix
-            key = list_name + '_sgb'
-            if key not in subgiant_star_lists:
-                subgiant_star_lists[key] = []
-            subgiant_star_lists[key].extend(subgiant_list)
+                else:
+                    print(f"⚠️ No subgiant phase for '{fname}' in '{list_name}'.")
+            subgiant_star_lists[list_name + '_sgb'] = subgiant_list
 
         output['subgiant_star_lists'] = subgiant_star_lists
 
-    # 6. Create isochrone lists grouped by rounded Age(Gyr) if requested
+    # 5. Isochrones
     if load_isochrones:
         if not load_all_tracks:
             raise ValueError("load_isochrones=True requires load_all_tracks=True")
 
         isochrone_lists = {}
-
         for track_list in star_lists.values():
             for table, filename in track_list:
-
-                # 6a. Skip if Age(Gyr) column missing
                 if 'Age(Gyr)' not in table.columns:
                     continue
-
-                # 6b. Defensive copy to avoid modifying original
                 table = table.copy()
-
-                # 6c. Validate rounding parameter
                 if iso_round < 1:
-                    print('Invalid iso_round value; defaulting to 2.')
+                    print("Invalid iso_round; defaulting to 2.")
                     iso_round = 2
-
-                # 6d. Round Age(Gyr) to specified decimal places for grouping
                 table['AgeRounded'] = table['Age(Gyr)'].round(iso_round)
-
-                # 6e. Group by rounded age and collect isochrone data
                 for age, age_group in table.groupby('AgeRounded'):
                     iso_name = f"{age:.{iso_round}f}Gyr_iso"
-                    if iso_name not in isochrone_lists:
-                        isochrone_lists[iso_name] = []
-                    # Drop helper column before appending
-                    isochrone_lists[iso_name].append(age_group.drop(columns=['AgeRounded']).copy())
-
+                    isochrone_lists.setdefault(iso_name, []).append(
+                        age_group.drop(columns=['AgeRounded']).copy()
+                    )
         output['isochrone_lists'] = isochrone_lists
 
-    # 7. Create EEP (Equivalent Evolutionary Phase) tracks grouped by Mass if requested
+    # 6. EEP tracks
     if load_eeps:
         if not load_all_tracks:
             raise ValueError("load_eeps=True requires load_all_tracks=True")
 
         eep_lists = {}
-
         for track_list in star_lists.values():
             for table, filename in track_list:
-
-                # 7a. Skip if Mass column missing
                 if 'Mass' not in table.columns:
                     continue
-
-                # 7b. Group by Mass and collect EEP tracks
                 for mass, mass_group in table.groupby('Mass'):
                     eep_name = f"{mass:.2f}Msun_eep"
-                    if eep_name not in eep_lists:
-                        eep_lists[eep_name] = []
-                    eep_lists[eep_name].append(mass_group.copy())
-
+                    eep_lists.setdefault(eep_name, []).append(mass_group.copy())
         output['eep_lists'] = eep_lists
 
-    # 8. Include all loaded raw tracks in output if requested
+    # 7. Add raw tracks if requested
     if load_all_tracks:
         output['star_lists'] = star_lists
 
-    # 9. Return the assembled output dictionary
     return output
